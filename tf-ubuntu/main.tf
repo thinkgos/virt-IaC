@@ -54,8 +54,8 @@ resource "libvirt_cloudinit_disk" "commoninit" {
 
 # Create the machine
 resource "libvirt_domain" "domain-ubuntu" {
-  name   = "ubuntu-terraform"
-  memory = "1024"
+  name   = "tf-ubuntu"
+  memory = "2048"
   vcpu   = 2
 
   cloudinit = libvirt_cloudinit_disk.commoninit.id
