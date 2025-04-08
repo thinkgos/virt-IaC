@@ -19,13 +19,21 @@ provider "libvirt" {
 #   }
 # }
 
-# We fetch the latest ubuntu release image from their mirrors
-resource "libvirt_volume" "ubuntu-qcow2" {
-  name = "ubuntu-qcow2"
-  pool = "default" # libvirt_pool.ubuntu.name
+# fetch the latest ubuntu release image from their mirrors
+resource "libvirt_volume" "tf-ubuntu-base-volume" {
+  name = "tf-ubuntu-base-volume"
+  pool = "default"
   # source = "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
   source = "/mms/CloudImages/noble-server-cloudimg-amd64.img"
   format = "qcow2"
+}
+
+resource "libvirt_volume" "tf-ubuntu-main-volume" {
+  name           = "tf-ubuntu-main-volume"
+  pool           = "default"
+  format         = "qcow2"
+  base_volume_id = libvirt_volume.tf-ubuntu-base-volume.id
+  size           = 20 * 1024 * 1024 * 1024 # 20gb
 }
 
 data "template_file" "user_data" {
@@ -44,8 +52,8 @@ data "template_file" "network_config" {
 # https://github.com/dmacvicar/terraform-provider-libvirt/blob/master/website/docs/r/cloudinit.html.markdown
 # Use CloudInit to add our ssh-key to the instance
 # you can add also meta_data field
-resource "libvirt_cloudinit_disk" "commoninit" {
-  name           = "commoninit.iso" # libvirt_pool.ubuntu.name
+resource "libvirt_cloudinit_disk" "tf-seed-ubuntu" {
+  name           = "tf-seed-ubuntu.iso"
   pool           = "default"
   user_data      = data.template_file.user_data.rendered
   meta_data      = data.template_file.meta_data.rendered
@@ -58,10 +66,20 @@ resource "libvirt_domain" "domain-ubuntu" {
   memory = "2048"
   vcpu   = 2
 
-  cloudinit = libvirt_cloudinit_disk.commoninit.id
+  cloudinit = libvirt_cloudinit_disk.tf-seed-ubuntu.id
+
+  disk {
+    volume_id = libvirt_volume.tf-ubuntu-main-volume.id
+  }
 
   network_interface {
     network_name = "default"
+  }
+
+  graphics {
+    type        = "spice"
+    listen_type = "address"
+    autoport    = true
   }
 
   # IMPORTANT: this is a known bug on cloud images, since they expect a console
@@ -77,15 +95,5 @@ resource "libvirt_domain" "domain-ubuntu" {
     type        = "pty"
     target_type = "virtio"
     target_port = "1"
-  }
-
-  disk {
-    volume_id = libvirt_volume.ubuntu-qcow2.id
-  }
-
-  graphics {
-    type        = "spice"
-    listen_type = "address"
-    autoport    = true
   }
 }
