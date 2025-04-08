@@ -1,0 +1,47 @@
+#cloud-config
+# https://cloudinit.readthedocs.io/en/latest/topics/examples.html
+
+password: 123456
+chpasswd:
+  expire: False
+ssh_pwauth: True
+allow_public_ssh_keys: true
+ssh_deletekeys: true
+ssh_authorized_keys:
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBmHGZf+9jiWa8X7Q2uWDrheQYeDOiQlRJOu1NH90zSq thinkgo@aliyun.com
+
+# run the following cmds after system is booted and rootfs is mounted
+runcmd:
+  - echo -n '' > /etc/machine-id # clear machine id
+  - /bin/systemd-machine-id-setup # make new machine id
+  - chsh -s /usr/bin/fish ubuntu # make shell use fish
+
+power_state:
+  delay: "now"
+  mode: reboot
+  message: Make new machine-id take effect
+  timeout: 3
+  condition: True
+
+apt:
+  primary:
+    - arches: [default]
+      uri: http://mirrors.aliyun.com/ubuntu
+      search:
+        - http://mirrors.aliyun.com/ubuntu
+        - http://archive.ubuntu.com/ubuntu
+  security:
+    - uri: http://mirrors.aliyun.com/ubuntu
+      search:
+        - http://mirrors.aliyun.com/ubuntu
+        - http://security.ubuntu.com/ubuntu
+  sources:
+    fish-shell:
+      source: ppa:fish-shell/release-4
+
+package_reboot_if_required: true
+package_update: true
+package_upgrade: true
+packages:
+  - apt:
+      - fish
