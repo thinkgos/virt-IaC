@@ -1,2 +1,3 @@
-# virt-IaC
-Infrastructure as Code(IaC) for virt
+# virt-iac
+
+Virt -- Infrastructure as Code(IaC)
