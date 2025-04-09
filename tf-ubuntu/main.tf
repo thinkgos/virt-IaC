@@ -20,20 +20,19 @@ provider "libvirt" {
 # }
 
 # fetch the latest ubuntu release image from their mirrors
-resource "libvirt_volume" "tf-ubuntu-base-volume" {
-  name = "tf-ubuntu-base-volume"
+resource "libvirt_volume" "base-volume" {
+  name = "vm-ubuntu-base-volume"
   pool = "default"
-  # source = "https://cloud-images.ubuntu.com/noble/current/noble-server-cloudimg-amd64.img"
-  source = "/mms/CloudImages/noble-server-cloudimg-amd64.img"
-  format = "qcow2"
+  source = var.base_volume_config.source
+  format = var.base_volume_config.format
 }
 
-resource "libvirt_volume" "tf-ubuntu-main-volume" {
-  name           = "tf-ubuntu-main-volume"
-  pool           = "default"
-  format         = "qcow2"
-  base_volume_id = libvirt_volume.tf-ubuntu-base-volume.id
-  size           = 20 * 1024 * 1024 * 1024 # 20gb
+resource "libvirt_volume" "main-volume" {
+  name           = "vm-ubuntu-main-volume"
+  pool           = libvirt_volume.base-volume.pool
+  format         = libvirt_volume.base-volume.format
+  base_volume_id = libvirt_volume.base-volume.id
+  size           = var.main_volume_config.size
 }
 
 data "template_file" "user_data" {
@@ -52,24 +51,24 @@ data "template_file" "network_config" {
 # https://github.com/dmacvicar/terraform-provider-libvirt/blob/master/website/docs/r/cloudinit.html.markdown
 # Use CloudInit to add our ssh-key to the instance
 # you can add also meta_data field
-resource "libvirt_cloudinit_disk" "tf-seed-ubuntu" {
-  name           = "tf-seed-ubuntu.iso"
-  pool           = "default"
+resource "libvirt_cloudinit_disk" "seed-linux" {
+  name           = "vm-ubuntu-seed.iso"
+  pool           =  libvirt_volume.base-volume.pool
   user_data      = data.template_file.user_data.rendered
   meta_data      = data.template_file.meta_data.rendered
   network_config = data.template_file.network_config.rendered
 }
 
 # Create the machine
-resource "libvirt_domain" "domain-ubuntu" {
-  name   = "tf-ubuntu"
-  memory = "2048"
-  vcpu   = 2
+resource "libvirt_domain" "vm-domain" {
+  name   = var.vm_config.name
+  memory = var.vm_config.memory
+  vcpu   = var.vm_config.vcpu
 
-  cloudinit = libvirt_cloudinit_disk.tf-seed-ubuntu.id
+  cloudinit = libvirt_cloudinit_disk.seed-linux.id
 
   disk {
-    volume_id = libvirt_volume.tf-ubuntu-main-volume.id
+    volume_id = libvirt_volume.main-volume.id
   }
 
   network_interface {
