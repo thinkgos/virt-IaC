@@ -1,3 +1,4 @@
+# https://developer.hashicorp.com/terraform/tutorials/configuration-language
 terraform {
   required_providers {
     # https://registry.terraform.io/providers/dmacvicar/libvirt/latest/docs
@@ -7,8 +8,13 @@ terraform {
     }
   }
 }
+
 provider "libvirt" {
   uri = "qemu:///system"
+}
+
+locals {
+  name_prefix = "${var.vm_config.domain.name}-" # 命名前缀
 }
 
 # resource "libvirt_pool" "ubuntu" {
@@ -21,51 +27,37 @@ provider "libvirt" {
 
 # fetch the latest ubuntu release image from their mirrors
 resource "libvirt_volume" "base-volume" {
-  name = "vm-ubuntu-base-volume"
-  pool = "default"
-  source = var.base_volume_config.source
-  format = var.base_volume_config.format
+  name   = "${local.name_prefix}base-volume"
+  pool   = "default"
+  source = var.vm_config.base_volume.source
+  format = var.vm_config.base_volume.format
 }
 
 resource "libvirt_volume" "main-volume" {
-  name           = "vm-ubuntu-main-volume"
+  name           = "${local.name_prefix}main-volume"
   pool           = libvirt_volume.base-volume.pool
   format         = libvirt_volume.base-volume.format
   base_volume_id = libvirt_volume.base-volume.id
-  size           = var.main_volume_config.size
+  size           = var.vm_config.main_volume.size
 }
 
-data "template_file" "user_data" {
-  template = file("${path.module}/cloud-init/user_data")
-}
-
-data "template_file" "meta_data" {
-  template = file("${path.module}/cloud-init/meta_data")
-}
-
-data "template_file" "network_config" {
-  template = file("${path.module}/cloud-init/network_config")
-}
-
-# for more info about paramater check this out
+# for more info about parameter check this out
 # https://github.com/dmacvicar/terraform-provider-libvirt/blob/master/website/docs/r/cloudinit.html.markdown
-# Use CloudInit to add our ssh-key to the instance
-# you can add also meta_data field
-resource "libvirt_cloudinit_disk" "seed-linux" {
-  name           = "vm-ubuntu-seed.iso"
-  pool           =  libvirt_volume.base-volume.pool
-  user_data      = data.template_file.user_data.rendered
-  meta_data      = data.template_file.meta_data.rendered
-  network_config = data.template_file.network_config.rendered
+resource "libvirt_cloudinit_disk" "seed-disk" {
+  name           = "${local.name_prefix}seed.iso"
+  pool           = libvirt_volume.base-volume.pool
+  user_data      = file("cloud-init/user_data")      # cloud-init user data
+  meta_data      = file("cloud-init/meta_data")      # cloud-init meta data
+  network_config = file("cloud-init/network_config") # cloud-init network-config data
 }
 
 # Create the machine
 resource "libvirt_domain" "vm-domain" {
-  name   = var.vm_config.name
-  memory = var.vm_config.memory
-  vcpu   = var.vm_config.vcpu
+  name   = var.vm_config.domain.name
+  memory = var.vm_config.domain.memory
+  vcpu   = var.vm_config.domain.vcpu
 
-  cloudinit = libvirt_cloudinit_disk.seed-linux.id
+  cloudinit = libvirt_cloudinit_disk.seed-disk.id # attached as a CDROM
 
   disk {
     volume_id = libvirt_volume.main-volume.id
@@ -77,8 +69,8 @@ resource "libvirt_domain" "vm-domain" {
 
   graphics {
     type        = "spice"
-    listen_type = "address"
     autoport    = true
+    listen_type = "address"
   }
 
   # IMPORTANT: this is a known bug on cloud images, since they expect a console
