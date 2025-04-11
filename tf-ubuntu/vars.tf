@@ -24,7 +24,7 @@ variable "vm_config" {
     }
     // 主卷
     main_volume = {
-      size = 1024 * 1024 * 1024 * 20 # 20g
+      size = 1024 * 1024 * 1024 * 40 # 20g
     }
     # 域
     domain = {

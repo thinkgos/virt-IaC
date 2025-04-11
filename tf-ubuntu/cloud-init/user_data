@@ -9,7 +9,7 @@ allow_public_ssh_keys: true
 ssh_deletekeys: true
 ssh_authorized_keys:
   - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBmHGZf+9jiWa8X7Q2uWDrheQYeDOiQlRJOu1NH90zSq thinkgo@aliyun.com
-
+  - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII9yvfxGEHKqaCRu5eTqx+g7P1hJRptnrRPWastP9rtW thinkgo@aliyun.com
 # run the following cmds after system is booted and rootfs is mounted
 runcmd:
   - echo -n '' > /etc/machine-id # clear machine id
