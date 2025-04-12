@@ -46,5 +46,4 @@ packages:
   - apt:
       - fish
       - tree
-      - neovim
       - lua5.4
